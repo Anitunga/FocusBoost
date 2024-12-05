@@ -1,5 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider} from "firebase/auth";
+import { getAuth, GoogleAuthProvider, User } from "firebase/auth";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 //import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
@@ -15,7 +17,33 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
-export { auth };
-export { googleProvider };
+// Fonction pour créer/initialiser le document utilisateur
+const createUserDocument = async (user: User) => {
+  if (!user) return;
+  
+  const userRef = doc(db, 'users', user.uid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    const defaultData = {
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL || require('../assets/images/user.png'),
+      points: 0,
+      hasLotteryTicket: false,
+      createdAt: serverTimestamp(),
+    };
+
+    try {
+      await setDoc(userRef, defaultData);
+    } catch (error) {
+      console.error("Error creating user document:", error);
+    }
+  }
+};
+
+export { auth, db, storage, googleProvider, createUserDocument };
