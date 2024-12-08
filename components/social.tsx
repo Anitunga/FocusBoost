@@ -15,6 +15,7 @@ interface UserData {
   photoURL: string;
   points: number;
   hasLotteryTicket: boolean;
+  tickets: number;
   rank?: string;
   completedSessions?: number;
 }
@@ -70,21 +71,19 @@ const SocialScreen = ({ route }: { route: { params?: { showTicket?: boolean, sha
       }
 
       const recipientRef = doc(db, 'users', recipientId);
-      const recipientDoc = await getDoc(recipientRef);
-      const recipientData = recipientDoc.data();
-
-      if (recipientData?.hasLotteryTicket) {
-        Alert.alert('Error', `${recipientName} already has a ticket`);
-        return;
-      }
 
       await runTransaction(db, async (transaction) => {
         transaction.update(userRef, { 
           hasLotteryTicket: false 
         });
 
+        const recipientDoc = await transaction.get(recipientRef);
+        const recipientData = recipientDoc.data();
+        const currentTickets = recipientData?.tickets || 0;
+
         transaction.update(recipientRef, { 
           hasLotteryTicket: true,
+          tickets: currentTickets + 1,
           lastTicketReceivedDate: new Date(),
           ticketSender: auth.currentUser?.displayName || 'Unknown'
         });
@@ -99,7 +98,8 @@ const SocialScreen = ({ route }: { route: { params?: { showTicket?: boolean, sha
       await loadInitialData();
       
       Alert.alert('Success', `Ticket sent to ${recipientName}`);
-      navigation.goBack();
+      
+      navigation.navigate('Home' as never);
 
     } catch (error) {
       console.error('Error sharing ticket:', error);
@@ -172,6 +172,7 @@ const SocialScreen = ({ route }: { route: { params?: { showTicket?: boolean, sha
             photoURL: userData.photoURL || require('../assets/images/user.png'),
             points: userData.points || 0,
             hasLotteryTicket: true,
+            tickets: userData.tickets || 0,
             rank: calculateRank(userData.points || 0),
             completedSessions: userData.completedSessions || 0
           });
@@ -183,6 +184,7 @@ const SocialScreen = ({ route }: { route: { params?: { showTicket?: boolean, sha
             photoURL: winnerData.photoURL || require('../assets/images/user.png'),
             points: winnerData.points || 0,
             hasLotteryTicket: true,
+            tickets: winnerData.tickets || 0,
             rank: calculateRank(winnerData.points || 0),
             completedSessions: winnerData.completedSessions || 0
           });
@@ -275,6 +277,9 @@ const SocialScreen = ({ route }: { route: { params?: { showTicket?: boolean, sha
             </Text>
             <Text style={styles.winnerPoints}>{lotteryWinner.points} points</Text>
             <Text style={styles.winnerRank}>{lotteryWinner.rank}</Text>
+            <Text style={styles.winnerTickets}>
+              🎟️ {lotteryWinner.tickets} tickets
+            </Text>
             <Text style={styles.winnerSessions}>
               {lotteryWinner.completedSessions} sessions completed
             </Text>
@@ -370,6 +375,7 @@ const SocialScreen = ({ route }: { route: { params?: { showTicket?: boolean, sha
           <Text style={styles.userName}>{item.displayName}</Text>
           <Text style={styles.userPoints}>{item.points} points</Text>
           <Text style={styles.userRank}>{item.rank}</Text>
+          <Text style={styles.userTickets}>🎟️ {item.tickets} tickets</Text>
         </View>
       </View>
     </View>
@@ -491,6 +497,12 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
+  userTickets: {
+    fontSize: 12,
+    color: '#FF9800',
+    marginTop: 2,
+    fontWeight: '500',
+  },
   lotteryWinnerContainer: {
     backgroundColor: '#FFD700',
     margin: 10,
@@ -535,6 +547,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 4,
+  },
+  winnerTickets: {
+    fontSize: 14,
+    color: '#FF9800',
+    marginTop: 4,
+    fontWeight: '500',
   },
   winnerSessions: {
     fontSize: 12,
