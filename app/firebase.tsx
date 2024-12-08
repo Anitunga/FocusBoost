@@ -35,6 +35,7 @@ const createUserDocument = async (user: User) => {
       photoURL: user.photoURL || require('../assets/images/user.png'),
       points: 0,
       hasLotteryTicket: false,
+      tickets: 0,
       createdAt: serverTimestamp(),
     };
 
